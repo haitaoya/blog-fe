@@ -54,6 +54,11 @@
                 <el-button>取消</el-button>
             </el-form-item>
         </el-form>
+<form>
+      <input type="file" @change="getFile($event)">
+      <button class="button button-primary button-pill button-small" @click="submit($event)">提交</button>
+    </form>
+
         <login-footer></login-footer>
     </div>
 </template>
@@ -62,7 +67,7 @@
 import LoginHeader from "@/components/common/Header.vue";
 import LoginFooter from "@/components/common/Footer.vue";
 import loginApi from "../../api/admin";
-// import axios from 'axios'
+import axios from 'axios'
 export default {
     name: "AppLogin",
     // blogHeader、blogFooter组件给申明到components里面然后在template里面使用
@@ -105,6 +110,59 @@ export default {
         this.createCode();
     },
     methods: {
+        getFile: function (event) {
+        this.file = event.target.files[0];
+        console.log(this.file);
+      },
+      submit: function (event) {
+        //阻止元素发生默认的行为
+        event.preventDefault();
+        let formData = new FormData();
+        formData.append("file", this.file);
+        formData.append("responseType","blob");
+        axios({ // 用axios发送post请求
+          method: 'post',
+          url: 'http://localhost:8888/upload', // 请求地址
+          data: formData, // 参数
+          responseType: 'blob' // 表明返回服务器返回的数据类型
+        })
+        // axios.post('http://localhost:8888/upload', formData)
+          .then(function (response) {
+            console.log(response.status);
+            if(response.status == 200 && response.data){
+                console.log(response);
+                console.log(response.headers['content-type']);
+                if(response.headers['content-type'] == 'application/json' ){
+                    let reader = new FileReader(); // 创建读取文件对象
+                    reader.addEventListener("loadend", function () { // 
+                    let res = JSON.parse(reader.result); // 返回的数据
+                        console.log(res,'返回结果数据') // { name: "小明" }
+                        alert(res['message'])
+                    });
+                    reader.readAsText(response.data, 'utf-8'); // 设置读取的数据以及返回的数据类型为utf-8    
+                }else{
+                    // alert(response.data);
+                    console.log(response);
+                    alert("处理失败，请查看结果excel")
+                    var blob = new Blob([response.data], {type: 'application/vnd.ms-excel;charset=utf-8'});
+                    //创建下载地址以及a标签,并且模拟a标签的点击事件进行下载文件。
+                    var url = window.URL.createObjectURL(blob);
+                    var aLink = document.createElement("a");
+                    aLink.style.display = "none";
+                    aLink.download = '标记颜色.xlsx';
+                    aLink.href = url;
+                    document.body.appendChild(aLink)
+                    aLink.click()
+                }    
+            }     
+          })
+          .catch(function (error) {
+            alert(error+'error');
+            console.log(error);
+            // window.location.reload();
+          });
+      },
+
         login() {
             this.$refs.loginForm.validate((result) => {
                 if (!result) {
